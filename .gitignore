@@ -1,0 +1,7 @@
+bot_log
+discord_token
+owner_id
+sudoers
+Pipfile*
+*.sublime*
+__pycache__/*
