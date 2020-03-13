@@ -172,7 +172,7 @@ async def on_message(message):
     for cmd in bot_filter:
         msgtxt = modules[cmd].main(message)
         if msgtxt:
-            message.channel.send(msgtxt)
+            await message.channel.send(msgtxt)
 
 @client.event
 async def on_error(event, *args, **kwargs):
