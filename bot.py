@@ -50,7 +50,7 @@ def get_token(path = PATH):
 def get_sudoers(channel, path = PATH):
     try:
         return json.load(open(os.path.join(path, "sudoers")))[channel]
-    except KeyError:
+    except:
         return []
 
 def import_modules(path = PATH):
