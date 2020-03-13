@@ -2,6 +2,7 @@ import subprocess
 from subprocess import PIPE, STDOUT
 
 TYPE = "public"
+IS_ASYNC = False
 
 HELP = """\
 Pinging the given server.

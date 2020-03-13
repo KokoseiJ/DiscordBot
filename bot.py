@@ -151,7 +151,11 @@ async def on_message(message):
             if (cmd in owner and message.author.id == ownerid) or \
             (cmd in private and (message.author.id in sudoers or message.author.id == ownerid)) or \
             (cmd in public):
-                msgtxt = modules[cmd].main(message)
+                module = modules[cmd]
+                if module.IS_ASYNC:
+                    msgtxt = await module.main(message)
+                else:
+                    msgtxt = module.main(message)
                 if msgtxt:
                     if isinstance(msgtxt, types.GeneratorType):
                         msg = None
@@ -168,7 +172,7 @@ async def on_message(message):
     for cmd in bot_filter:
         msgtxt = modules[cmd].main(message)
         if msgtxt:
-            await message.channel.send(msgtxt)
+            message.channel.send(msgtxt)
 
 @client.event
 async def on_error(event, *args, **kwargs):

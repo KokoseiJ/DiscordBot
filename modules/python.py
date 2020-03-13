@@ -2,6 +2,7 @@ import subprocess
 from subprocess import PIPE, STDOUT
 
 TYPE = "owner"
+IS_ASYNC = False
 
 HELP = """\
 Execute the python code. This will open another interpreter using `python -c` \
