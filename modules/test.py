@@ -1,6 +1,6 @@
 TYPE = "owner"
 
-HELP = "Tese"
+HELP = "Test"
 
-def main(message):
-    return str(modules)
+async def main(message, **kwargs):
+    yield str(client)

@@ -2,7 +2,7 @@ TYPE = "filter"
 
 HELP = '"무쿠로", "Mukuro", "むくろ" 라는 단어에 반응합니다.'
 
-def main(message):
+async def main(message):
     if "무쿠로" in message.content:
         return "이쿠사바 무쿠로... 이 학교에 숨은 16번째 고교생... \"초고교급 절망\"이라 불리는 여고생... 이쿠사바 무쿠로를 조심해."
     elif "mukuro" in message.content.lower():

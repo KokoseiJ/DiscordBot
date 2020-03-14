@@ -1,4 +1,5 @@
 bot_log
+discordbot.log
 discord_token
 owner_id
 sudoers
@@ -8,3 +9,5 @@ Pipfile*
 __pycache__/*
 *.mp4
 *.m4a
+*.mp3
+modules/__music__/*
