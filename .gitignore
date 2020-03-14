@@ -2,6 +2,9 @@ bot_log
 discord_token
 owner_id
 sudoers
+prefix
 Pipfile*
 *.sublime*
 __pycache__/*
+*.mp4
+*.m4a
