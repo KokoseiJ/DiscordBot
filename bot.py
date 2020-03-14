@@ -244,7 +244,7 @@ set_prefix:\n이 서버에서 사용할 Prefix를 설정합니다. 본 명령어
 
         elif cmd == "list_sudoer":
             logger.info("Running list_sudoer...")
-            sudoerlist = [user.display_name for user in message.guild.members if user.id in sudoers]
+            sudoerlist = [user.display_name for user in message.guild.members if str(user.id) in sudoers]
             sudoerstxt = "\n".join(sudoerlist)
             embed = await get_embed("list_sudoer", sudoerstxt)
             msg = await send_msg(message.channel, embed)
