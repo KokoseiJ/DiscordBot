@@ -1,6 +1,7 @@
 bot_log
 discordbot.log
 discord_token
+yt_api_key
 owner_id
 sudoers
 prefix

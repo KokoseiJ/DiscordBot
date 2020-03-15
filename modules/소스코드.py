@@ -5,4 +5,4 @@ HELP = """\
 """
 
 async def main(message, **kwargs):
-    yield "제 소스코드는 https://github.com/KokoseiJ/DiscordBot 에서 열람하실 수 있습니다!"
+    yield "제 소스코드는 [여기](https://github.com/KokoseiJ/DiscordBot)에서 열람하실 수 있습니다!"

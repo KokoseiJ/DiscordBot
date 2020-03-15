@@ -1,10 +1,12 @@
 import os
+import re
 import asyncio
 import discord
 import logging
 import threading
-
-MAX_THREAD = 100
+import subprocess
+import modules.__ytapi__ as ytapi
+from subprocess import PIPE, STDOUT
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 
@@ -12,19 +14,32 @@ TYPE = "public"
 
 HELP = """\
 음악을 재생합니다.
-사용 방법: 음악 [join/leave/play/stop/pause/resume/queue]\
+사용 방법: 음악 [join/leave/play/stop/skip/pause/resume/current/queue]\
 """
 
+MAX_THREAD = 32
+
+
+
 class music_file:
-    def __init__(self, provider, vidid, basepath = PATH, foldername = "__music__"):
+    def __init__(self, provider, vidid, name, thumbnail, adder, basepath = PATH, foldername = "__music__"):
         self.provider = provider
         self.id = vidid
+        self.name = name
+        self.thumbnail = thumbnail
+        self.adder = adder
         self.filename = f"{self.provider}-{self.id}"
         self.path = os.path.join(basepath, foldername)
+        self.downloaded = False
 
     async def _init(self):
-        if not await self._file_exists():
-            await self._download()
+        if await self._file_exists():
+            self.downloaded = True
+        else:
+            url = await self._get_url()
+            while threading.active_count() > MAX_THREAD:
+                await asyncio.sleep(1)
+            threading.Thread(target = self._run_ytdl_noasync, args = (url,)).start()
         return
 
     async def _file_exists(self):
@@ -38,23 +53,45 @@ class music_file:
             os.mkdir(self.path)
             return False
 
-    async def _download(self):
+    async def _get_url(self):
         if self.provider == "yt":
             url = "https://www.youtube.com/watch?v={}"
         else:
             raise NotImplementedError(f"Unknown Provider {self.provider}")
         url = url.format(self.id)
-        await self._run_ytdl(url)
-        return
+        #self._run_ytdl(url)
+        return url
 
     async def _run_ytdl(self, url):
-        logging.info(f"Downloading {url}.")
-        await asyncio.create_subprocess_exec(
-            "youtube-dl", "-x", "--audio-format", "opus", url, "-o", os.path.join(self.path, self.filename + ".%(ext)s"))
+        logging.info(f"음악_Downloading {url}.")
+        process = await asyncio.create_subprocess_exec(
+            "youtube-dl", "-x", "--audio-format", "opus", "--audio-quality", "128K",
+            url, "-o", os.path.join(self.path, self.filename + ".%(ext)s"),
+            stdout = PIPE, stderr = STDOUT)
+        stdout, _ = await process.communicate()
+        logging.info(stdout.decode())
+        self.downloaded = True
         return
+
+    def _run_ytdl_noasync(self, url):
+        logging.info(f"음악_Downloading {url}.")
+        process = subprocess.run(
+            ["youtube-dl", "-x", "--audio-format", "opus", "--audio-quality", "128K",
+            url, "-o", os.path.join(self.path, self.filename + ".%(ext)s")],
+            stdout = PIPE, stderr = STDOUT)
+        logging.info(process.stdout.decode())
+        self.downloaded = True
+        return
+
     async def get(self):
-        while not await self._file_exists():pass
-        return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
+        while not self.downloaded:
+            await asyncio.sleep(1)
+        if await self._file_exists():
+            return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
+        else:
+            raise RuntimeError("Failed to download.")
+
+
 
 class server_client:
     def __init__(self, client, bot_client):
@@ -75,11 +112,17 @@ class server_client:
         return self.client.is_playing()
 
     async def add_queue(self, item):
-        self.queue.append(item)
+        if type(item) == music_file:
+            self.queue.append(item)
+        else:
+            self.queue.extend(item)
         return
 
     async def list_queue(self):
         return self.queue.copy()
+
+    async def nuke_queue(self):
+        return self.queue.clear()
 
     async def _get_queue(self):
         try:
@@ -100,12 +143,19 @@ class server_client:
             await self._play()
 
     async def _play(self):
-        song = await self._get_queue()
-        src = await song.get()
+        music = await self._get_queue()
+        src = await music.get()
         self.client.play(src, after = self._play_wrap)
+        embed = discord.Embed(
+            title = "음악",
+            description = f"**{await self.get_name()}: {music.name}을 재생합니다.**",
+            color = 0x962fa4)
+        embed.set_thumbnail(url = music.thumbnail)
+        embed.set_footer(text = f"신청자: {music.adder.display_name}", icon_url = music.adder.avatar_url)
+        await self.channel.send(embed = embed)
         return
 
-    def _play_wrap(self, error):
+    def _play_wrap(self, error = None):
         if error:
             raise error
         else:
@@ -131,7 +181,29 @@ class server_client:
     async def leave(self):
         await self.client.disconnect()
 
+
+
 clients = {}
+
+
+
+async def get_vid(usrinput):
+    if usrinput.startswith("https://www.youtube.com/watch?v="):
+        videoid = usrinput.split("=")[1].split("&")[0]
+        if "&list=" in usrinput:
+            playlistid = usrinput.split("=")[2].split("&")[0]
+            return await ytapi.get_playlist(playlistid, videoid)
+        else:
+            return None, await ytapi.get_vid_info(videoid)
+    elif usrinput.startswith("https://youtu.be/"):
+        videoid = usrinput.split("/")[-1].split("?")[0]
+        return None, await ytapi.get_vid_info(videoid)
+    elif usrinput.startswith("https://www.youtube.com/playlist?list="):
+        playlistid = usrinput.split("=")[1].split("&")[0]
+        return await ytapi.get_playlist(playlistid)
+    else:
+        result = await ytapi.search_video(usrinput)
+        return None, result[0]
 
 async def get_class(classobj, *args):
     rtnobj = classobj(*args)
@@ -149,6 +221,8 @@ async def get_client(message):
     except KeyError:
         raise RuntimeError("이 서버에서 접속하고 있는 보이스 채널이 없습니다.")
 
+
+
 async def main(message, **kwargs):
     cmd = message.content.split()
     bot_client = kwargs['client']
@@ -158,7 +232,7 @@ async def main(message, **kwargs):
         if cmd[1] == "join":
             async for msgtxt in join(message, bot_client):
                 yield msgtxt
-                return
+            return
         elif cmd[1] == "leave":
             func = leave
         elif cmd[1] == "play":
@@ -176,12 +250,12 @@ async def main(message, **kwargs):
         elif cmd[1] == "resume":
             func = resume
         elif cmd[1] == "leave_all":
-            async for msgtxt in join(message, bot_client):
+            async for msgtxt in leave_all(message, bot_client):
                 yield msgtxt
-                return
+            return
         else:
             raise ValueError(f"알 수 없는 명령어: {cmd[1]}.")
-        logging.info("Running " + cmd[1])
+        logging.info("음악_Running " + cmd[1])
         async for msgtxt in func(message):
             yield msgtxt
 
@@ -219,19 +293,44 @@ async def play_test(message):
         raise ValueError("재생할 videoid를 입력하여야 합니다.")
     vidid = cmd[2]
     yield f"{vidid}를 Queue에 추가하는 중입니다..."
-    song = await get_class(music_file, "yt", vidid)
-    await client.play(song, message)
+    music = await get_class(
+        music_file, "yt", vidid, "Test_music",
+        "https://www.meme-arsenal.com/memes/c9e6371faa3b57eaee1d35595ca8e910.jpg",
+        message.author)
+    await client.play(music, message)
     yield f"{vidid}를 재생합니다."
+
+async def play(message):
+    client = await get_client(message)
+    cmd = message.content.split()
+    if len(cmd) == 2:
+        raise ValueError("재생할 URL/검색어를 입력하여야 합니다.")
+    usrinput = message.content[len(cmd[0]) + len(cmd[1]) + 2:]
+    yield f"{usrinput} 을(를) 로딩하는 중입니다..."
+    plname, video = await get_vid(usrinput)
+    if plname is None:
+        yield f"{video[2]}을 다운로드하는 중입니다..."
+        music = await get_class(music_file, *video, message.author)
+        yield f"{video[2]}을(를) Queue에 추가하는 중입니다..."
+        await client.play(music, message)
+        yield f"{video[2]}을(를) Queue에 추가하였습니다."
+    else:
+        yield f"{plname}을 다운로드하는 중입니다..."
+        music = [await get_class(music_file, *_video, message.author) for _video in video]
+        yield f"{plname}을(를) Queue에 추가하는 중입니다..."
+        await client.play(music, message)
+        yield f"{plname}을(를) Queue에 추가하였습니다. 첫 곡은 {video[0][2]}입니다."
 
 async def stop(message):
     client = await get_client(message)
+    await client.nuke_queue()
     await client.stop()
-    yield "음악을 정지합니다."
+    yield "음악을 정지하고, 리스트를 비웠습니다."
 
 async def skip(message):
     client = await get_client(message)
-    await client.skip()
-    yield "현재 재생중이 음악을 스킵합니다."
+    await client.stop()
+    yield "현재 재생중인 음악을 스킵합니다."
 
 async def pause(message):
     client = await get_client(message)
@@ -245,10 +344,11 @@ async def resume(message):
 
 async def leave_all(message, bot_client):
     global clients
-    namelist = [await clients[client].get_name() for client in clients if await clients[client].is_alive()]
+    voice_clients = bot_client.voice_clients
+    namelist = [client.channel.name for client in voice_clients]
     yield ", ".join(namelist) + "에서 나가는 중입니다..."
-    for client in clients:
-        if await clients[client].is_alive():
-            await clients[client].leave()
+    for client in voice_clients:
+        if client.is_connected():
+            await client.disconnect()
     clients = {}
     yield ", ".join(namelist) + "에서 성공적으로 나왔습니다."

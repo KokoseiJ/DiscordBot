@@ -5,6 +5,7 @@ import discord
 import logging
 import aiofiles
 import importlib
+import traceback
 
 BOTNAME = "키리기리 쿄코 봇"
 PREFIX = "!"
@@ -111,6 +112,8 @@ logger.addHandler(file_handler)
 console_handler = logging.StreamHandler()
 console_handler.setFormatter(log_formatter)
 logger.addHandler(console_handler)
+
+logger.info("====================Starting...====================")
 
 token = get_token()
 ownerid = get_ownerid()
@@ -287,11 +290,12 @@ async def on_error(event, *args, **kwargs):
         excname = exc[0].__name__
         excarglist = [str(x) for x in exc[1].args]
         if not excarglist:
-            traceback = excname
+            tbtxt = excname
         else:
-            traceback = excname + ": " + ", ".join(excarglist)
-        logger.error(traceback)
-        embed = discord.Embed(title = "코드를 실행하는 중 오류가 발생하였습니다.", description = traceback, color = 0xff0000)
+            tbtxt = excname + ": " + ", ".join(excarglist)
+        tb = traceback.format_exc()
+        logger.error(tb)
+        embed = discord.Embed(title = "코드를 실행하는 중 오류가 발생하였습니다.", description = tbtxt, color = 0xff0000)
         await message.channel.send(embed = embed)
     else:
         raise
