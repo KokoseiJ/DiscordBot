@@ -17,10 +17,6 @@ HELP = """\
 사용 방법: 음악 [join/leave/play/stop/skip/pause/resume/current/queue]\
 """
 
-MAX_THREAD = 32
-
-
-
 class music_file:
     def __init__(self, provider, vidid, name, thumbnail, adder, basepath = PATH, foldername = "__music__"):
         self.provider = provider
@@ -35,11 +31,6 @@ class music_file:
     async def _init(self):
         if await self._file_exists():
             self.downloaded = True
-        else:
-            url = await self._get_url()
-            while threading.active_count() > MAX_THREAD:
-                await asyncio.sleep(1)
-            threading.Thread(target = self._run_ytdl_noasync, args = (url,)).start()
         return
 
     async def _file_exists(self):
@@ -84,11 +75,13 @@ class music_file:
         return
 
     async def get(self):
-        while not self.downloaded:
-            await asyncio.sleep(1)
-        if await self._file_exists():
+        if self.downloaded:
             return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
         else:
+            url = await self._get_url()
+            await self._run_ytdl(url)
+            if await self._file_exists():
+                return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
             raise RuntimeError("Failed to download.")
 
 
@@ -144,6 +137,13 @@ class server_client:
 
     async def _play(self):
         music = await self._get_queue()
+        embed = discord.Embed(
+            title = "음악",
+            description = f"**{await self.get_name()}: {music.name}을 다운로드하는 중입니다...**",
+            color = 0x962fa4)
+        embed.set_thumbnail(url = music.thumbnail)
+        embed.set_footer(text = f"신청자: {music.adder.display_name}", icon_url = music.adder.avatar_url)
+        msg = await self.channel.send(embed = embed)
         src = await music.get()
         self.client.play(src, after = self._play_wrap)
         embed = discord.Embed(
@@ -152,7 +152,7 @@ class server_client:
             color = 0x962fa4)
         embed.set_thumbnail(url = music.thumbnail)
         embed.set_footer(text = f"신청자: {music.adder.display_name}", icon_url = music.adder.avatar_url)
-        await self.channel.send(embed = embed)
+        await msg.edit(embed = embed)
         return
 
     def _play_wrap(self, error = None):
@@ -309,13 +309,13 @@ async def play(message):
     yield f"{usrinput} 을(를) 로딩하는 중입니다..."
     plname, video = await get_vid(usrinput)
     if plname is None:
-        yield f"{video[2]}을 다운로드하는 중입니다..."
+        yield f"{video[2]}을 로딩하는 중입니다..."
         music = await get_class(music_file, *video, message.author)
         yield f"{video[2]}을(를) Queue에 추가하는 중입니다..."
         await client.play(music, message)
         yield f"{video[2]}을(를) Queue에 추가하였습니다."
     else:
-        yield f"{plname}을 다운로드하는 중입니다..."
+        yield f"{plname}을 로딩하는 중입니다..."
         music = [await get_class(music_file, *_video, message.author) for _video in video]
         yield f"{plname}을(를) Queue에 추가하는 중입니다..."
         await client.play(music, message)
