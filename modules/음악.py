@@ -14,7 +14,7 @@ TYPE = "public"
 
 HELP = """\
 음악을 재생합니다.
-사용 방법: 음악 [join/leave/play/stop/skip/pause/resume/current/queue]\
+사용 방법: 음악 [join/leave/play/stop/skip/pause/resume/queue]\
 """
 
 class music_file:
@@ -29,6 +29,7 @@ class music_file:
         self.downloaded = False
 
     async def _init(self):
+        self.url = await self._get_url()
         if await self._file_exists():
             self.downloaded = True
         return
@@ -53,7 +54,8 @@ class music_file:
         #self._run_ytdl(url)
         return url
 
-    async def _run_ytdl(self, url):
+    async def _run_ytdl(self):
+        url = self.url
         logging.info(f"음악_Downloading {url}.")
         process = await asyncio.create_subprocess_exec(
             "youtube-dl", "-x", "--audio-format", "opus", "--audio-quality", "128K",
@@ -78,8 +80,7 @@ class music_file:
         if self.downloaded:
             return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
         else:
-            url = await self._get_url()
-            await self._run_ytdl(url)
+            await self._run_ytdl()
             if await self._file_exists():
                 return discord.FFmpegOpusAudio(os.path.join(self.path, self.filename + ".opus"))
             raise RuntimeError("Failed to download.")
@@ -139,7 +140,7 @@ class server_client:
         music = await self._get_queue()
         embed = discord.Embed(
             title = "음악",
-            description = f"**{await self.get_name()}: {music.name}을 다운로드하는 중입니다...**",
+            description = f"**{await self.get_name()}: [{music.name}]({music.url})을 다운로드하는 중입니다...**",
             color = 0x962fa4)
         embed.set_thumbnail(url = music.thumbnail)
         embed.set_footer(text = f"신청자: {music.adder.display_name}", icon_url = music.adder.avatar_url)
@@ -148,7 +149,7 @@ class server_client:
         self.client.play(src, after = self._play_wrap)
         embed = discord.Embed(
             title = "음악",
-            description = f"**{await self.get_name()}: {music.name}을 재생합니다.**",
+            description = f"**{await self.get_name()}: [{music.name}]({music.url})을 재생합니다.**",
             color = 0x962fa4)
         embed.set_thumbnail(url = music.thumbnail)
         embed.set_footer(text = f"신청자: {music.adder.display_name}", icon_url = music.adder.avatar_url)
@@ -223,6 +224,8 @@ async def get_client(message):
 
 
 
+
+# [join/leave/play/stop/skip/pause/resume/current/queue]
 async def main(message, **kwargs):
     cmd = message.content.split()
     bot_client = kwargs['client']
@@ -230,9 +233,7 @@ async def main(message, **kwargs):
         raise ValueError("명령어를 입력하여야 합니다.")
     else:
         if cmd[1] == "join":
-            async for msgtxt in join(message, bot_client):
-                yield msgtxt
-            return
+            func = join
         elif cmd[1] == "leave":
             func = leave
         elif cmd[1] == "play":
@@ -249,30 +250,42 @@ async def main(message, **kwargs):
             func = pause
         elif cmd[1] == "resume":
             func = resume
+        elif cmd[1] == "queue":
+            func = queue
         elif cmd[1] == "leave_all":
-            async for msgtxt in leave_all(message, bot_client):
-                yield msgtxt
-            return
+            func = leave_all
         else:
             raise ValueError(f"알 수 없는 명령어: {cmd[1]}.")
         logging.info("음악_Running " + cmd[1])
-        async for msgtxt in func(message):
-            yield msgtxt
+        try:
+            async for msgtxt in func(message):
+                yield msgtxt
+        except TypeError:
+            async for msgtxt in func(message, bot_client):
+                yield msgtxt
 
 async def join(message, bot_client):
-    member = message.author
-    if not type(member) == discord.Member:
-        raise TypeError("message.author 값의 타입이 discord.Member가 아닙니다. 명령어를 사용하신 곳이 서버가 맞는지 확인해주세요.")
-    voice = member.voice
-    if voice == None:
-        raise RuntimeError("명령어 실행자가 보이스 채널에 접속해 있지 않습니다.")
-    client = await voice.channel.connect()
+    if not message.guild.me.voice == None:
+        yield "이미 음성채널에 접속한 상태입니다. 음성채널에 재접속합니다..."
+        for _client in bot_client.voice_clients:
+            if _client.guild == message.guild:
+                client = _client
+                break
+    else:
+        member = message.author
+        if not type(member) == discord.Member:
+            raise TypeError("message.author 값의 타입이 discord.Member가 아닙니다. 명령어를 사용하신 곳이 서버가 맞는지 확인해주세요.")
+        voice = member.voice
+        if voice == None:
+            raise RuntimeError("명령어 실행자가 보이스 채널에 접속해 있지 않습니다.")
+        client = await voice.channel.connect()
     clients[message.guild.id] = await get_class(server_client, client, bot_client)
     yield f"{client.channel.name} 채널에 접속하였습니다."
 
 async def leave(message):
     client = await get_client(message)
     channel_name = await client.get_name()
+    await client.nuke_queue()
     await client.leave()
     del clients[message.guild.id]
     yield f"{channel_name} 채널에서 나왔습니다."
@@ -341,6 +354,28 @@ async def resume(message):
     client = await get_client(message)
     await client.resume()
     yield "음악을 다시 재생합니다."
+
+async def queue(message):
+    client = await get_client(message)
+
+    cmd = message.content.split()
+    if len(cmd) == 2:
+        page = 0
+    else:
+        if len(cmd) != 3:
+            raise ValueError("페이지 번호는 하나만 입력할 수 있습니다.")
+        try:
+            page = int(cmd[2]) - 1
+        except ValueError:
+            raise ValueError("페이지 번호는 숫자만 입력할 수 있습니다.")
+
+    queue = await client.list_queue()
+    splitqueue = [queue[n:n + 10] for n in range(0, len(queue), 10)]
+    
+    if page >= len(splitqueue):
+        raise ValueError("페이지 번호가 존재하는 페이지의 개수보다 큽니다.")
+    yield "\n".join([f"{numb + (page * 10)}. [{music.name}]({music.url})" for music, numb in zip(splitqueue[page], range(1, 11))]) + \
+    f"\n{page + 1}/{len(splitqueue)}"
 
 async def leave_all(message, bot_client):
     global clients

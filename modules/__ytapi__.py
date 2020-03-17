@@ -68,12 +68,9 @@ async def get_playlist(playlistid, videoid = None):
             logging.info(video)
             raise
     if videoid:
-        logging.info(videoid)
         videos_beforevid = []
         while not videos[0][1] == videoid:
             videos_beforevid.append(videos.pop(0))
-        logging.info(videos)
-        logging.info(videos_beforevid)
         videos.extend(videos_beforevid)
     return playlist_name, tuple(videos)
 
