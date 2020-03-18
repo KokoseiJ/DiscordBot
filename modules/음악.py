@@ -265,20 +265,13 @@ async def main(message, **kwargs):
                 yield msgtxt
 
 async def join(message, bot_client):
-    if not message.guild.me.voice == None:
-        yield "이미 음성채널에 접속한 상태입니다. 음성채널에 재접속합니다..."
-        for _client in bot_client.voice_clients:
-            if _client.guild == message.guild:
-                client = _client
-                break
-    else:
-        member = message.author
-        if not type(member) == discord.Member:
-            raise TypeError("message.author 값의 타입이 discord.Member가 아닙니다. 명령어를 사용하신 곳이 서버가 맞는지 확인해주세요.")
-        voice = member.voice
-        if voice == None:
-            raise RuntimeError("명령어 실행자가 보이스 채널에 접속해 있지 않습니다.")
-        client = await voice.channel.connect()
+    member = message.author
+    if not type(member) == discord.Member:
+        raise TypeError("message.author 값의 타입이 discord.Member가 아닙니다. 명령어를 사용하신 곳이 서버가 맞는지 확인해주세요.")
+    voice = member.voice
+    if voice == None:
+        raise RuntimeError("명령어 실행자가 보이스 채널에 접속해 있지 않습니다.")
+    client = await voice.channel.connect()
     clients[message.guild.id] = await get_class(server_client, client, bot_client)
     yield f"{client.channel.name} 채널에 접속하였습니다."
 
