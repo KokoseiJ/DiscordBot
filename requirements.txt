@@ -3,3 +3,4 @@ PyNaCl
 aiofiles
 requests_async
 youtube_dl
+bs4
