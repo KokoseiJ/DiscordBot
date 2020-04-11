@@ -35,3 +35,5 @@ You can invite her with this link: https://discordapp.com/api/oauth2/authorize?c
  * [ ] add docstring and comments to every modules
 
  * [ ] Add help module that will display the list of commands.
+ 
+ * [ ] Add github module which will notify the user when the attached repo of github is updated.
