@@ -18,7 +18,8 @@ def import_module():
     with some modules that stores informations on their own like 음악, it
     literally fucks up and it requires you to manually kick the bot and rejoin.
     """
-    # TODO: Implement on_reload methods to all the modules.
+    # TODO: Implement `on_reload` methods to all the modules, and execute it
+    # when the bot reloads modules.
     global modules, commands, filters
     folderpath = os.path.join(PATH, "modules")
     logging.info(f"Loading {folderpath}...")
