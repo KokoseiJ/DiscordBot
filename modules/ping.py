@@ -1,7 +1,7 @@
 import asyncio
 from asyncio.subprocess import PIPE, STDOUT
 
-TYPE = "public"
+PERMISSION = 5
 
 HELP = """\
 Pinging the given server.

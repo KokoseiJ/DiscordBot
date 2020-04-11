@@ -3,7 +3,7 @@ import discord
 import requests_async as requests
 from bs4 import BeautifulSoup as bs
 
-TYPE = "public"
+PERMISSION = 4
 
 HELP = """\
 Search the image using google.
@@ -27,4 +27,4 @@ async def main(message, **kwargs):
     embed = discord.Embed()
     embed.set_image(url = imgurl)
     await message.channel.send(embed = embed)
-    yield ""
+    yield None

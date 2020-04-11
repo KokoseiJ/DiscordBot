@@ -1,12 +1,12 @@
-bot_log
 discordbot.log
 discord_token
 bot_perm
-prefix
+bot_prefix
+config.ini
 Pipfile*
 *.sublime*
 __pycache__/*
-*.mp4
-*.m4a
-*.mp3
+modules/__pycache__/*
 modules/__music__/*
+# Things for my cwd
+modules_old

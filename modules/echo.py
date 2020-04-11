@@ -1,4 +1,4 @@
-TYPE = "private"
+PERMISSION = 4
 
 HELP = """\
 Send the message under the name of the bot.

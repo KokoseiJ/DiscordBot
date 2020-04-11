@@ -1,0 +1,26 @@
+#################################################
+### Configuration file for Kyoko Kirigiri Bot ###
+#################################################
+
+# Rename this file to config.ini to use.
+# "cp config.ini.example config.ini" should do the trick.
+# It uses configparser to parse this file, so You can check its
+# document and the bot's code if you're not sure about how to write
+# values. It's not hard at all.
+# for booleans, you can choose between true, false, yes, no, on, off,
+# 1, 0. case insensitive.
+# Also, Bot token is stored in a different file for the sake of
+# security and comfortability. come on, you probably wouldn't want to
+# share your token while sharing your config file.
+
+# Bot's name. used by log, help, and some other modules.
+BotName = Kyoko Kirigiri
+# Bot's main color. only hexadecimals are accepted. This will be the
+embed's color, excluding error message. 
+MainColor = 0x962fa4
+# Default Prefix, Server's mods can set their own, but this prefix
+# will be used if they didn't set any prefix yet.
+Prefix = !
+# Owner's ID.
+# This one is mine btw, change it or all your bot are belong to us lol
+OwnerId = 378898017249525771

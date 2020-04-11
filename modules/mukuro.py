@@ -1,4 +1,4 @@
-TYPE = "filter"
+PERMISSION = 6
 
 HELP = '"무쿠로", "Mukuro", "むくろ" 라는 단어에 반응합니다.'
 
