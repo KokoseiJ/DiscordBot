@@ -223,7 +223,7 @@ async def on_message(message):
                             # If module wants to remove the message, It will
                             # return None. If we already sent a message, delete it.
                             if msg:
-                                await Bot.msg.delete()
+                                await msg.delete()
                                 msg == None
                         else:
                             # If the type is str, It has to be converted to
@@ -260,7 +260,7 @@ async def on_message(message):
         # Modules should filter those.
         content = await modules[module_name].main(message)
         if content:
-            await send_msg(message.channel, content)
+            await Bot.send_msg(message.channel, content)
 
 @client.event
 async def on_error(event, *args, **kwargs):
