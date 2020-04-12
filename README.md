@@ -21,19 +21,48 @@ You can invite her with this link: https://discordapp.com/api/oauth2/authorize?c
 
 ### Code
  
+ * [x] add perm command which contains help, set(which contains user, module subcommands) subcommands
+
  * [ ] import_module function: Implement `on_reload` methods to all the modules, and execute it when the bot reloads modules.
 
  * [ ] on_ready handler:  Do something in here, like changing the activity for every single second
  
- * [ ] add perm function which contains help, set(which contains user, module subcommands) subcommands
- 
  * [ ] add set_prefix command
  
 ### Modules
- * [ ] Convert every modules to new format
  
  * [ ] add docstring and comments to every modules
 
  * [ ] Add help module that will display the list of commands.
  
  * [ ] Add github module which will notify the user when the attached repo of github is updated.
+
+ * [ ] Add filter module which will allow users to add their own filters.
+
+ * [ ] translate 음악 module to english.
+
+#### Module conversion
+
+ * [x] echo.py
+
+ * [x] eval.py
+
+ * [x] execute.py
+
+ * [x] googleimg.py
+
+ * [x] mukuro.py
+
+ * [x] ping.py
+
+ * [ ] google.py
+
+ * [ ] python.py
+
+ * [ ] source.py
+
+ * [ ] zenitsu_response.py
+
+ * [ ] 소스코드.py
+
+ * [ ] 음악.py
