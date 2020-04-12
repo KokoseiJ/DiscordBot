@@ -147,6 +147,8 @@ async def on_message(message):
     # Load user's permission.
     perm = await Bot.get_user_perm(message.author, message.guild, sv_perm)
 
+    if perm == 9:
+        return
 
     if not message.author.bot and message.content != prefix:
         if message.content == "?prefix":
@@ -198,7 +200,7 @@ async def on_message(message):
                 )
                 await Bot.edit_msg(msg, embed)
             
-            elif cmd == "perm" and perm <= 5:
+            elif cmd == "perm":
                 rtnvalue, new_sv_perm = await perm_cmd(
                     fullcmd.split(), message, sv_perm, modules, commands)
                 sv_perm = new_sv_perm
@@ -235,7 +237,8 @@ async def on_message(message):
                     async for rtnvalue in msggen:
                         if rtnvalue is None:
                             # If module wants to remove the message, It will
-                            # return None. If we already sent a message, delete it.
+                            # return None. If we already sent a message, delete
+                            # it.
                             if msg:
                                 await msg.delete()
                                 msg == None
@@ -265,8 +268,18 @@ async def on_message(message):
                                 # send a new one.
                                 await Bot.edit_msg(msg, content)
                             else:
-                                msg = await Bot.send_msg(message.channel, content)
-    
+                                msg = await Bot.send_msg(
+                                    message.channel, content)
+                elif module_perm != 0:
+                    # You don't have permission? Fuck off.
+                    embed = await Bot.get_embed(
+                        "Permission Error", 
+                        "You don't have permission to use this command.",
+                        message.author,
+                        no_capitalize = True,
+                        colour = 0xff0000)
+                    await Bot.send_msg(message.channel, embed)
+
     for module_name in filters:
         # Execute all the filters. it should only recieve a message object and
         # return(not yield) a string to be sent as is.

@@ -91,9 +91,9 @@ async def perm_cmd(cmd, message, sv_perm, modules, commands):
             # to executor or just disabled
             cmdlist = [cmdname for cmdname in cmdlist
                 if perm <= await Bot.get_module_perm(
-                    modules[cmdname], message.guild, sv_perm) and
+                    modules[cmdname], message.guild, sv_perm) or
                     await Bot.get_module_perm(
-                        modules[cmdname], message.guild, sv_perm) != 0
+                        modules[cmdname], message.guild, sv_perm) == 0
                 ]
             if not cmdlist:
                 raise ValueError("No command was specified, or commands are having a higher permission than yours.")

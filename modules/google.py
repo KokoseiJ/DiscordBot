@@ -1,13 +1,12 @@
-# soup.find_all("table")[4]
-import discord
+import logging
 import requests_async as requests
 from bs4 import BeautifulSoup as bs
 
 PERMISSION = 5
 
 HELP = """\
-Search the image using google.
-Usage: googleimg [QUERY TO SEARCH]
+Search the google using the given query.
+Usage: google [QUERY TO SEARCH]
 """
 
 #이름 = soup.find("body").find("div", {"id":"main"}).find_all("div", {"class":["ZINbbc", "xpd", "09g5cc", "uUPGi"]})[x].find("div", {"class":["BNeawe", "vvjwJb", "AP7Wnd"]}).text
@@ -20,11 +19,13 @@ async def main(message, **kwargs):
         raise ValueError("You have to provide words to search")
     query = message.content[len(cmd[0]):]
     yield f"Searching {query} in google..."
-    url = f"https://www.google.com/search?tbm=isch&q={query}"
+    url = f"https://www.google.com/search?q={query}"
     r = await requests.get(url)
     soup = bs(r.text, "html.parser")
-    imgurl = soup.find_all("table")[4].find("img")['src']
-    embed = discord.Embed(color = kwargs['statics']['MAINCOLOR'])
-    embed.set_image(url = imgurl)
-    await message.channel.send(embed = embed)
-    yield None
+    searchres = soup.find("body").find("div", {"id":"main"})\
+    .find_all("div", {"class":["ZINbbc", "xpd", "09g5cc", "uUPGi"]})
+    searchlist = [(res.find("div", {"class":["BNeawe", "vvjwJb", "AP7Wnd"]}).text,
+                  res.find("a")['href'].replace("/url?q=", "https://www.google.com/url?q="))
+                  for res in searchres
+                  if res.find("a")['href'].startswith("/url?q=")]
+    yield "\n\n".join([f"[{res[0]}]({res[1]})" for res in searchlist][:5])

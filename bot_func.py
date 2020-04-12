@@ -99,7 +99,7 @@ class Bot:
             return module.PERMISSION
     
     @classmethod
-    async def get_embed(cls, title, desc, sender, colour = None, **kwargs):
+    async def get_embed(cls, title, desc, sender, colour = None, no_capitalize = False, **kwargs):
         """
         This will generate the Embed object using the given data.
         This will set title to the cmd argument, but with capitalized and "_"
@@ -116,11 +116,12 @@ class Bot:
         We might add more for the sake of flexibility, but for now I think this
         is enough as You can set keyword arguments.
         """
-
+        if not no_capitalize:
+            title = title.replace("_", "").capitalize()
         if colour is None:
             colour = cls.maincolor
         embed = discord.Embed(
-            title = title.replace("_", "").capitalize(),
+            title = title,
             description = desc,
             colour = colour,
             **kwargs
