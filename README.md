@@ -4,7 +4,7 @@
 
 This repo contains the source code of Kyoko_Kirigiri#7947. Developer's Discord account is KokoseiJ#2113.
 
-You can invite her with this link: https://discordapp.com/api/oauth2/authorize?client_id=687805965042712587&scope=bot&permissions=104201280/
+[You can invite her using this link.](https://discordapp.com/api/oauth2/authorize?client_id=687805965042712587&scope=bot&permissions=104201280/)
 
 ***WARNING: This bot is still work in progress and It might work in unexpected way.***
 
