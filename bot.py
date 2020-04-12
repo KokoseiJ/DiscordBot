@@ -6,6 +6,7 @@ import importlib
 import traceback
 import configparser
 from bot_func import Bot
+from perm import perm_cmd
 
 def import_module():
     """
@@ -127,6 +128,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    global sv_prefix, sv_perm
     """
     Gets prefix for the server, check if command exists, check permission of
     the user, and finally run it.
@@ -144,8 +146,9 @@ async def on_message(message):
 
     # Load user's permission.
     perm = await Bot.get_user_perm(message.author, message.guild, sv_perm)
-    if not message.author.bot:
 
+
+    if not message.author.bot and message.content != prefix:
         if message.content == "?prefix":
             # Print the prefix that is used in this server
             logging.info(f"{str(message.author)} used the command ?prefix.")
@@ -194,7 +197,18 @@ async def on_message(message):
                     message.author
                 )
                 await Bot.edit_msg(msg, embed)
-    
+            
+            elif cmd == "perm" and perm <= 5:
+                rtnvalue, new_sv_perm = await perm_cmd(
+                    fullcmd.split(), message, sv_perm, modules, commands)
+                sv_perm = new_sv_perm
+                embed = await Bot.get_embed(
+                    "permission",
+                    rtnvalue,
+                    message.author
+                )
+                await Bot.send_msg(message.channel, embed)
+
             elif cmd in commands:
                 # Get the module's permission, If user's permission is higher
                 # than the command, execute it
@@ -202,7 +216,7 @@ async def on_message(message):
                 module_perm = await Bot.get_module_perm(
                     module, message.guild, sv_perm
                 )
-                if perm <= module_perm and not module_perm == 6:
+                if perm <= module_perm:
                     # module.main function is async generator which yields the
                     # content to send. so It stores the generator in msggen
                     # variable and execute it.

@@ -2,6 +2,7 @@ import os
 import json
 import discord
 import logging
+import aiofiles
 
 logger = logging.getLogger()
 
@@ -76,6 +77,8 @@ class Bot:
         """
         if user.id == cls.ownerid:
             return 1
+        elif user.id == guild.owner_id:
+            return 2
         else:
             try:
                 return sv_perm['user'][str(guild.id)][str(user.id)]
@@ -88,8 +91,11 @@ class Bot:
         Get the module's permission for this server. If not present, return 5
         """
         try:
-            return sv_perm['command'][str(guild.id)][module.__name__]
+            return sv_perm['command'][str(guild.id)][module.__name__.split(
+                ".")[1]]
         except KeyError:
+            logger.warning(f"Permission of command {module.__name__} for server\
+ {str(guild.id)} is not present.")
             return module.PERMISSION
     
     @classmethod
@@ -132,16 +138,17 @@ class Bot:
         )
         return embed
 
-    @staticmethod
-    async def json_dump(savedict, filename, path = None):
+    @classmethod
+    async def json_dump(cls, savedict, filename, path = None):
         """
-        It basically dumps the json to the given filename. it calls json.dump()
-        so it works identically with json.dump method, but it will load file
+        It basically dumps the json to the given filename. it calls json.dumps()
+        so it works identically with json.dumps method, but it will load file
         itself.
         """
         if path == None:
-            with aiofiles.open(os.path.join(path, filename), w) as f:
-                json.dump(savedict, f)
+            path = cls.path
+        async with aiofiles.open(os.path.join(path, filename), 'w') as f:
+            await f.write(json.dumps(savedict))
 
     @staticmethod
     async def send_msg(channel, content):
