@@ -55,13 +55,13 @@ This repo contains the source code of Kyoko_Kirigiri#7947. Developer's Discord a
 
  * [x] ping.py
 
- * [ ] google.py
+ * [x] google.py
 
- * [ ] python.py
+ * [x] python.py
 
- * [ ] source.py
+ * [x] source.py
 
- * [ ] zenitsu_response.py
+ * [x] zenitsu_response.py
 
  * [ ] 소스코드.py
 
