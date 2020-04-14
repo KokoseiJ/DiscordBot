@@ -167,10 +167,10 @@ async def on_message(message):
                 f"{str(message.author)} used the command ?prefix_reset."
             )
             sv_prefix[str(message.guild.id)] = PREFIX
-            await Bot.json_dump(sv_prefix, "prefix")
+            await Bot.json_dump(sv_prefix, "bot_prefix")
             embed = await Bot.get_embed(
                 "reset_prefix",
-                f"Sucessfully restored the prefix to `{prefix}`.",
+                f"Sucessfully restored the prefix to `{PREFIX}`.",
                 message.author
             )
             await Bot.send_msg(message.channel, embed)
@@ -182,7 +182,21 @@ async def on_message(message):
             logging.info(
     f"{str(message.author)} used the command {cmd}. message: {message.content}"
             )
-    
+            
+            if cmd == "set_prefix" and perm <= 3:
+                cmdsplit = fullcmd.split()
+                if len(cmdsplit) != 2:
+                    raise ValueError("Usage: set_prefix [prefix]")
+                prefix = cmdsplit[1]
+                sv_prefix[str(message.guild.id)] = prefix
+                await Bot.json_dump(sv_prefix, "bot_prefix")
+                embed = await Bot.get_embed(
+                    "set_prefix",
+                    "Succesfully set the prefix to " + prefix + ".",
+                    message.author
+                )
+                await Bot.send_msg(message.channel, embed)
+
             if cmd == "reload" and perm == 1:
                 # Call import_module() function to reload modules
                 logger.info("Reloading...")
@@ -210,7 +224,7 @@ async def on_message(message):
                     message.author
                 )
                 await Bot.send_msg(message.channel, embed)
-
+            
             elif cmd in commands:
                 # Get the module's permission, If user's permission is higher
                 # than the command, execute it
@@ -231,6 +245,7 @@ async def on_message(message):
                         statics = STATICS,
                         sv_perm = sv_perm,
                         sv_prefix = sv_prefix,
+                        modules = modules,
                         bot_func = Bot
                     )
                     msg = None
