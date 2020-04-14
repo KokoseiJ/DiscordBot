@@ -6,7 +6,7 @@ import discord
 import logging
 import threading
 import subprocess
-import modules_old.__ytapi__ as ytapi
+import modules.__ytapi__ as ytapi
 from subprocess import PIPE, STDOUT
 
 PATH = os.path.dirname(os.path.abspath(__file__))
