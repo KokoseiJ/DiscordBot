@@ -16,7 +16,7 @@
 # Bot's name. used by log, help, and some other modules.
 BotName = Kyoko Kirigiri
 # Bot's main color. only hexadecimals are accepted. This will be the
-embed's color, excluding error message. 
+# embed's color, excluding error message. 
 MainColor = 0x962fa4
 # Default Prefix, Server's mods can set their own, but this prefix
 # will be used if they didn't set any prefix yet.
