@@ -32,6 +32,8 @@ This repo contains the source code of Kyoko_Kirigiri#7947. Developer's Discord a
  * [x] translate 음악 module to english.
  
  * [x] Add help module that will display the list of commands.
+
+ * [ ] rewrite music module, as well as merging music module and nico module at once - no more server_client class.
  
  * [ ] add docstring and comments to every modules
  
