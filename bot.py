@@ -123,7 +123,7 @@ async def on_ready():
     ## TODO: Do something in here, like changing the activity for every single
     # second
     logger.info('Succesfully logged in as {0.user}!'.format(client))
-    activity = discord.Game("재미있는 코드 갈아엎기")
+    activity = discord.Game("use ")
     await client.change_presence(activity = activity)
 
 @client.event

@@ -1,6 +1,7 @@
-discord
-PyNaCl
-aiofiles
-requests_async
-youtube_dl
 bs4
+httpx
+PyNaCl
+discord
+aiofiles
+youtube_dl
+requests_async
