@@ -123,7 +123,7 @@ async def on_ready():
     ## TODO: Do something in here, like changing the activity for every single
     # second
     logger.info('Succesfully logged in as {0.user}!'.format(client))
-    activity = discord.Game("use ")
+    activity = discord.Game("Use ?prefix to get prefix")
     await client.change_presence(activity = activity)
 
 @client.event
