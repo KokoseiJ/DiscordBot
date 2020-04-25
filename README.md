@@ -47,7 +47,7 @@ Source code of Kyoko is open-sourced, and I appreciate any form of contribution.
  
  * [x] translate 음악 module to english.
  * [x] Add help module that will display the list of commands.
- * [ ] rewrite music module, as well as merging music module and nico module - no more server_client class.
+ * [x] rewrite music module, as well as merging music module and nico module - no more server_client class.
  * [ ] add docstring and comments to every modules
  * [ ] Add filter module which will allow users to add their own filters.
 
