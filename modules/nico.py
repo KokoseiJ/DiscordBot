@@ -26,7 +26,8 @@ logger = logging.getLogger()
 PERMISSION = 1
 HELP = """\
 Plays the music from `nicovideo.jp`.
-Usage: nico [play/stop/pause/resume/skip/queue/shuffle]
+This only accepts the URL of the video 
+Usage: nico [join/leave/play/stop/pause/resume/skip/queue/shuffle]
 """
 
 NICOVIDEO_URL = "https://www.nicovideo.jp/watch/{0}"
@@ -136,6 +137,7 @@ class OggParser:
                 packet_size = 0
             yield packet
 
+# Unused - Should be deleted later
 class ThreadSafeBytesIO(io.BytesIO):
     def __init__(self, *args, **kwargs):
         self.byte_rw_lock = threading.Lock()
@@ -165,17 +167,6 @@ class BotMusicStream(discord.AudioSource):
         self.download_in_progress = threading.Event()
         self.download_done = threading.Event()
 
-        # This argument will decode the audio stream from mp4 to PCM
-        """
-        self.ffmpeg_args = [
-            "ffmpeg", "-vn",
-            "-i", "-",
-            "-f", "s16le",
-            "-ar", "48000",
-            "-ac", "2",
-            "-"
-        ]
-        """
         self.ffmpeg_args = [
             "ffmpeg", "-vn",
             "-i", "-",
@@ -193,6 +184,12 @@ class BotMusicStream(discord.AudioSource):
             await asyncio.sleep(0.1)
         return
 
+    def _download(self):
+        raise NotImplementedError()
+
+    def read(self):
+        raise NotImplementedError()
+
     def cleanup(self):
         return
 
@@ -203,19 +200,12 @@ class NicoStream(BotMusicStream):
 
         url = NICOVIDEO_URL.format(info['video']['id'])
         title = info['video']['title']
-        author = info['owner']['nickname']
+        author = info['owner']['nickname'] if info['owner'] is not None else "Unknown"
         thumbnail = info['video']['largeThumbnailURL']
 
         super().__init__(url, title, author, thumbnail, adder)
 
 class NicoDMCStream(NicoStream):
-    def __init__(self, session, info, adder):
-        #self.bytestream = ThreadSafeBytesIO()
-        #self.oggparser = OggParser(self.bytestream)
-        #self.packet_iter = self.oggparser.packet_iter()
-
-        super().__init__(session, info, adder)
-
     def _download(self):
         # info에서 데이터 긁어와서 API 보내고 하트비트 시작한 후
         # m3u8 긁어와서 다운받고 bytearray에 작성
@@ -316,23 +306,69 @@ class NicoSmileStream(NicoStream):
         return
 
     def read(self):
-        framesize = discord.opus.Encoder.FRAME_SIZE
-        """
-        rtnbyte = b""
-        while len(rtnbyte) < framesize:
-            print("read")
-            rtnbyte = self.ffmpeg_process.stdout.read(
-                framesize - len(rtnbyte)
-            )
-            if len(rtnbyte) < framesize and self.download_done.is_set():
-                print("read done")
-                return b""
-        return rtnbyte
-        """
         return next(self.packet_iter, b"")
 
     def is_opus(self):
         return True
+
+class VoiceQueue:
+    def __init__(self, client):
+        self.client = client
+        self.channel = None
+        self.queue = []
+
+    def add_queue(self, item):
+        if isinstance(item, list):
+            return self.queue.extend(item)
+        else:
+            return self.queue.append(item)
+
+    def list_queue(self):
+        return self.queue.copy()
+
+    def nuke_queue(self):
+        return self.queue.clear()
+
+    def shuffle_queue(self):
+        return random.shuffle(self._queue)
+
+    def get_queue(self):
+        try:
+            return self.queue.pop(0)
+        except IndexError:
+            raise RuntimeError("Queue is empty.")
+
+    async def play(self, music, channel):
+        self.channel = channel
+        self.add_queue(music)
+        if not self.client.is_playing():
+            await self._play()
+
+    async def _play(self):
+        music = self.get_queue()
+        embed = await Bot.get_embed(
+            title = "music",
+            desc = f"**{self.client.channel.name}: Downloading [{music.author} - {music.title}]({music.url})...**",
+            sender = music.adder)
+        embed.set_thumbnail(url = music.thumbnail)
+        msg = await Bot.send_msg(self.channel, embed)
+        await music.prepare()
+        self.client.play(music, after = self._play_wrap)
+        embed = await Bot.get_embed(
+            title = "music",
+            desc = f"**{self.client.channel.name}: Now playing [{music.author} - {music.title}]({music.url}).**",
+            sender = music.adder)
+        embed.set_thumbnail(url = music.thumbnail)
+        await Bot.edit_msg(msg, embed)
+
+    def _play_wrap(self, error = None):
+        if error:
+            raise error
+        else:
+            coro = self._play()
+            fut = asyncio.run_coroutine_threadsafe(
+                coro, self.client.loop
+            )
 
 async def nico_get_info(session, url):
     loop = asyncio.get_event_loop()
@@ -348,6 +384,14 @@ async def nico_get_info(session, url):
             id = "js-initial-watch-data"
         )['data-api-data']
     )
+
+async def nico_get_stream(url, session, author):
+    info = await nico_get_info(session, url)
+    if info['video']['dmcInfo']:
+        stream = NicoDMCStream(session, info, author)
+    else:
+        stream = NicoSmileStream(session, info, author)
+    return stream
 
 def nico_get_session():
     session = requests.session()
@@ -365,7 +409,36 @@ def nico_get_session():
         logger.info("no ID/PASSWD was present, Downloading as a guest...")
     return session
 
-async def main(message, *args, **kwargs):
+async def _get_voice_client(guild, user):
+    client = guild.voice_client
+    if client is None:
+        voice = user.voice
+        if voice is None:
+            raise RuntimeError("Error: User is not connected to any voice channel")
+        client = await voice.channel.connect()
+    return client
+
+async def get_voice_client(guild, user):
+    try:
+        print("get_voice_client 콜됨")
+        client = voice_clients[str(guild.id)]
+        print("break1")
+        if not client.client.is_connected():
+            print("break2")
+            client.cient = await _get_voice_client(guild, user)
+            print("break3")
+        return client
+    except KeyError:
+        print("break4")
+        client = await _get_voice_client(guild, user)
+        print("break5")
+        voice_clients[str(guild.id)] = VoiceQueue(client)
+        print("break6")
+        return voice_clients[str(guild.id)]
+
+voice_clients = {}
+
+async def test(message, *args, **kwargs):
     yield "스크립트를 시작한!"
     member = message.author
     if not type(member) == discord.Member:
@@ -392,6 +465,68 @@ async def main(message, *args, **kwargs):
     embed.set_thumbnail(url = teststream.thumbnail)
     client.play(teststream)
     yield embed
+
+async def main(message, **kwargs):
+    # play/stop/pause/resume/skip/queue/shuffle/leave
+    cmd = message.content.split()[1:]
+    if not cmd:
+        yield "Usage: nico [play/stop/pause/resume/skip/queue/shuffle/leave]"
+    elif cmd[0] == "play":
+        if not cmd[1].startswith("https://www.nicovideo.jp/watch/"):
+            raise RuntimeError("Not a valid URL.")
+        client = await get_voice_client(message.guild, message.author)
+        stream = await nico_get_stream(cmd[1], SESSION, message.author)
+        await client.play(stream, message.channel)
+        yield None
+    elif cmd[0] == "stop":
+        client = await get_voice_client(message.guild, message.author)
+        client.nuke_queue()
+        client.client.stop()
+        yield "Stopped the playback and removed the queue."
+    elif cmd[0] == "pause":
+        client = await get_voice_client(message.guild, message.author)
+        client.client.pause()
+        yield "Paused."
+    elif cmd[0] == "resume":
+        client = await get_voice_client(message.guild, message.author)
+        client.client.resume()
+        yield "Resumed."
+    elif cmd[0] == "skip":
+        client = await get_voice_client(message.guild, message.author)
+        client.client.stop()
+    elif cmd[0] == "queue":
+        client = await get_voice_client(message.guild, message.author)
+        queue = client.list_queue()
+        txtqueue = [
+            f"[{music.author} - {music.title}]({music.url})"
+            for music in queue
+        ]
+        splitqueue = [txtqueue[n:n + 10] for n in range(0, len(txtqueue), 10)]
+        if len(cmd) == 1:
+            page = 0
+        else:
+            try:
+                page = int(cmd[1]) - 1
+            except ValueError:
+                raise ValueError(f"{cmd[1]} is not a number.")
+        if page > len(splitqueue):
+            raise ValueError(f"{page} is bigger than the amount of existing page.")
+
+        yield "\n\n".join([
+            f"{numb}. {music}"
+            for music, numb in zip(splitqueue[page], range(1, 11))
+        ]) + f"\n\n{page + 1}/{len(splitqueue)}"
+    elif cmd[0] == "shuffle":
+        client = await get_voice_client(message.guild, message.author)
+        client.shuffle_queue()
+        yield "Shuffled the queue."
+    elif cmd[0] == "leave":
+        client = await get_voice_client(message.guild, message.author)
+        await client.client.disconnect()
+        del voice_clients[str(guild.id)]
+        yield "Removed the queue and disconnected from the voice channel."
+    else:
+        yield "Usage: nico [play/stop/pause/resume/skip/queue/shuffle/leave]"
 
 if __name__ == "modules.nico":
     SESSION = nico_get_session()
