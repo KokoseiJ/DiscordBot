@@ -4,6 +4,7 @@ import sys
 import json
 import time
 import httpx
+import random
 import struct
 import asyncio
 import discord
@@ -26,12 +27,13 @@ logger = logging.getLogger()
 PERMISSION = 1
 HELP = """\
 Plays the music from `nicovideo.jp`.
-This only accepts the URL of the video 
-Usage: nico [join/leave/play/stop/pause/resume/skip/queue/shuffle]
+Usage: nico [play/stop/pause/resume/skip/queue/shuffle/repeat/leave]
+You can input the query to search in nicovideo, content ID(sm*******), or the url of the video.
 """
 
 NICOVIDEO_URL = "https://www.nicovideo.jp/watch/{0}"
 NICO_LOGINURL = "https://account.nicovideo.jp/login/redirector"
+NICO_GETTHUMBINFO_URL = "https://ext.nicovideo.jp/api/getthumbinfo/{0}"
 
 def nico_dmc_get_postdata(info):
     return json.dumps({
@@ -157,10 +159,9 @@ class ThreadSafeBytesIO(io.BytesIO):
         return rtnbyte
 
 class BotMusicStream(discord.AudioSource):
-    def __init__(self, url, title, author, thumbnail, adder):
+    def __init__(self, url, title, thumbnail, adder):
         self.url = url
         self.title = title
-        self.author = author
         self.thumbnail = thumbnail
         self.adder = adder
 
@@ -194,19 +195,38 @@ class BotMusicStream(discord.AudioSource):
         return
 
 class NicoStream(BotMusicStream):
-    def __init__(self, session, info, adder):
-        self.info = info
+    def __init__(self, contentid, session, thumbinfo, adder):
+        self.adder = adder
         self.session = session
+        self.contentid = contentid
 
-        url = NICOVIDEO_URL.format(info['video']['id'])
-        title = info['video']['title']
-        author = info['owner']['nickname'] if info['owner'] is not None else "Unknown"
-        thumbnail = info['video']['largeThumbnailURL']
+        url = NICOVIDEO_URL.format(contentid)
 
-        super().__init__(url, title, author, thumbnail, adder)
+        title = thumbinfo['title']
+        thumbnail = thumbinfo['thumbnail']
 
-class NicoDMCStream(NicoStream):
-    def _download(self):
+        super().__init__(url, title, thumbnail, adder)
+
+    async def prepare(self):
+        info = await nico_get_info(self.session, self.url)
+        self.info = info
+
+        if info['video']['dmcInfo']:
+            self.download_thread = threading.Thread(
+                target = self._download_dmc
+            )
+        else:
+            self.download_thread = threading.Thread(
+                target = self._download_smile
+            )
+
+        # 다른 스레드에서 다운로드 시작하고 플레이 가능할때까지 asyncio.sleep()
+        self.download_thread.start()
+        while not self.download_in_progress.is_set():
+            await asyncio.sleep(0.1)
+        return
+
+    def _download_dmc(self):
         # info에서 데이터 긁어와서 API 보내고 하트비트 시작한 후
         # m3u8 긁어와서 다운받고 bytearray에 작성
         api_url = self.info['video']['dmcInfo']['session_api']['urls'][0]['url']
@@ -260,29 +280,7 @@ class NicoDMCStream(NicoStream):
         self.download_done.set()
         return
 
-    def _heartbeat(self, api_url, data, interval = 40):
-        url = api_url + "/" +\
-              data['session']['id'] + \
-              "?_format=json&_method=PUT"
-        while True:
-            heartbeat_request = self.session.post(
-                url,
-                headers = {"Content-Type": "application/json"},
-                data = json.dumps(data)
-            )
-            heartbeat_request.raise_for_status()
-            data = heartbeat_request.json()['data']
-            if self.download_done.wait(timeout = interval):
-                return
-
-    def read(self):
-        return next(self.packet_iter, b"")
-
-    def is_opus(self):
-        return True
-
-class NicoSmileStream(NicoStream):
-    def _download(self):
+    def _download_smile(self):
         url = self.info['video']['smileInfo']['url']
         video = self.session.get(url, stream = True)
         video.raise_for_status()
@@ -305,6 +303,21 @@ class NicoSmileStream(NicoStream):
         self.download_done.set()
         return
 
+    def _heartbeat(self, api_url, data, interval = 40):
+        url = api_url + "/" +\
+              data['session']['id'] + \
+              "?_format=json&_method=PUT"
+        while True:
+            heartbeat_request = self.session.post(
+                url,
+                headers = {"Content-Type": "application/json"},
+                data = json.dumps(data)
+            )
+            heartbeat_request.raise_for_status()
+            data = heartbeat_request.json()['data']
+            if self.download_done.wait(timeout = interval):
+                return
+
     def read(self):
         return next(self.packet_iter, b"")
 
@@ -316,12 +329,17 @@ class VoiceQueue:
         self.client = client
         self.channel = None
         self.queue = []
+        self.repeat = False
+
+    def set_repeat(self):
+        self.repeat = not self.repeat
+        return self.repeat
 
     def add_queue(self, item):
-        if isinstance(item, list):
-            return self.queue.extend(item)
-        else:
+        if isinstance(item, BotMusicStream):
             return self.queue.append(item)
+        else:
+            return self.queue.extend(item)
 
     def list_queue(self):
         return self.queue.copy()
@@ -330,7 +348,7 @@ class VoiceQueue:
         return self.queue.clear()
 
     def shuffle_queue(self):
-        return random.shuffle(self._queue)
+        return random.shuffle(self.queue)
 
     def get_queue(self):
         try:
@@ -345,10 +363,10 @@ class VoiceQueue:
             await self._play()
 
     async def _play(self):
-        music = self.get_queue()
+        music = self.source = self.get_queue()
         embed = await Bot.get_embed(
             title = "music",
-            desc = f"**{self.client.channel.name}: Downloading [{music.author} - {music.title}]({music.url})...**",
+            desc = f"**{self.client.channel.name}: Downloading [{music.title}]({music.url})...**",
             sender = music.adder)
         embed.set_thumbnail(url = music.thumbnail)
         msg = await Bot.send_msg(self.channel, embed)
@@ -356,7 +374,7 @@ class VoiceQueue:
         self.client.play(music, after = self._play_wrap)
         embed = await Bot.get_embed(
             title = "music",
-            desc = f"**{self.client.channel.name}: Now playing [{music.author} - {music.title}]({music.url}).**",
+            desc = f"**{self.client.channel.name}: Now playing [{music.title}]({music.url}).**",
             sender = music.adder)
         embed.set_thumbnail(url = music.thumbnail)
         await Bot.edit_msg(msg, embed)
@@ -365,6 +383,8 @@ class VoiceQueue:
         if error:
             raise error
         else:
+            if self.repeat:
+                self.add_queue(self.source)
             coro = self._play()
             fut = asyncio.run_coroutine_threadsafe(
                 coro, self.client.loop
@@ -385,16 +405,86 @@ async def nico_get_info(session, url):
         )['data-api-data']
     )
 
-async def nico_get_stream(url, session, author):
-    info = await nico_get_info(session, url)
-    if info['video']['dmcInfo']:
-        stream = NicoDMCStream(session, info, author)
-    else:
-        stream = NicoSmileStream(session, info, author)
-    return stream
+async def nico_get_thumbinfo(session, contentid):
+    loop = asyncio.get_event_loop()
+    r = await loop.run_in_executor(
+        None,
+        session.get,
+        NICO_GETTHUMBINFO_URL.format(contentid)
+    )
+    soup = bs(r.text, "html.parser")
+    return {
+        "title": soup.thumb.title.text,
+        "thumbnail": soup.thumb.thumbnail_url.text
+    }
+
+async def nico_get_mylist(url, session):
+    loop = asyncio.get_event_loop()
+    name = None
+    r = await loop.run_in_executor(
+        None,
+        requests.get,
+        url
+    )
+    soup = bs(r.text, "html.parser")
+    name = soup.find("div", id = "PAGEBODY")\
+        .find_all("script")[-4]\
+        .string\
+        .split("MylistGroup.preloadSingle(")[1]\
+        .split("name:")[1].split("\"")[1].split("\"")[0]
+
+    vidlist = []
+    prev_json = None
+    page = 0
+    while True:
+        page += 1
+        r = await loop.run_in_executor(
+            None,
+            requests.get,
+            f"{url}#+page={page}"
+        )
+        soup = bs(r.text, "html.parser")
+        listtxt = soup.find("div", id = "PAGEBODY")\
+            .find_all("script")[-4]\
+            .string\
+            .split("Mylist.preload")[1]\
+            .split(", ", 1)[1].split(");")[0]
+        jsonlist = json.loads(listtxt)
+        if jsonlist == prev_json:
+            break
+        vidlist.extend([
+            (   
+                vid['item_data']['video_id'],
+                {
+                    "title": vid['item_data']['title'],
+                    "thumbnail": vid['item_data']['thumbnail_url']
+                }
+            )
+            for vid in jsonlist
+            ])
+        prev_json = jsonlist
+    return name, vidlist
+
+async def nico_search(q, session):
+    loop = asyncio.get_event_loop()
+    r = await loop.run_in_executor(
+        None,
+        session.get,
+        f"https://api.search.nicovideo.jp/api/v2/snapshot/video/contents/search?targets=title,description,tags&fields=contentId&_sort=viewCounter&_limit=1&q={q}"
+    )
+    result = r.json()
+    if str(r.status_code)[0] == "5":
+        raise RuntimeError(f"Error: Nicovideo server is currently unavailable.\nError Code: `{result['meta']['errorCode']}`\nError Message: `{result['meta']['errorMessage']}`")
+    elif str(r.status_code)[0] == "4":
+        raise RuntimeError(f"Error: There was an error while sending request to nicovideo server.\nError Code: `{result['meta']['errorCode']}`\nError Message: `{result['meta']['errorMessage']}`")
+    elif not result['data']:
+        raise RuntimeError(f"No results found.")
+    return result['data'][0]['contentId']
 
 def nico_get_session():
     session = requests.session()
+    # Set User-Agent
+    session.headers.update({"User-Agent": Bot.botname.replace(" ", "_")})
     # I prefer japanese server so I will use this cookie
     session.cookies.set("lang", "ja-jp")
     try:
@@ -420,20 +510,13 @@ async def _get_voice_client(guild, user):
 
 async def get_voice_client(guild, user):
     try:
-        print("get_voice_client 콜됨")
         client = voice_clients[str(guild.id)]
-        print("break1")
         if not client.client.is_connected():
-            print("break2")
             client.cient = await _get_voice_client(guild, user)
-            print("break3")
         return client
     except KeyError:
-        print("break4")
         client = await _get_voice_client(guild, user)
-        print("break5")
         voice_clients[str(guild.id)] = VoiceQueue(client)
-        print("break6")
         return voice_clients[str(guild.id)]
 
 voice_clients = {}
@@ -472,12 +555,39 @@ async def main(message, **kwargs):
     if not cmd:
         yield "Usage: nico [play/stop/pause/resume/skip/queue/shuffle/leave]"
     elif cmd[0] == "play":
-        if not cmd[1].startswith("https://www.nicovideo.jp/watch/"):
-            raise RuntimeError("Not a valid URL.")
-        client = await get_voice_client(message.guild, message.author)
-        stream = await nico_get_stream(cmd[1], SESSION, message.author)
-        await client.play(stream, message.channel)
-        yield None
+        if cmd[1].startswith("https://www.nicovideo.jp/mylist/"):
+            name, vidlist = await nico_get_mylist(cmd[1], SESSION)
+            streamlist = [
+                NicoStream(
+                    contentid,
+                    SESSION,
+                    thumbinfo,
+                    message.author
+                )
+                for contentid, thumbinfo in vidlist
+            ]
+            client = await get_voice_client(message.guild, message.author)
+            await client.play(streamlist, message.channel)
+            yield f"Successfully added mylist[{name}]({cmd[1]})."
+        else:
+            if cmd[1].startswith("https://www.nicovideo.jp/watch/"):
+                contentid = cmd[1].replace("https://www.nicovideo.jp/watch/", "")
+            elif cmd[1].startswith("sm"):
+                contentid = cmd[1]
+            else:
+                contentid = await nico_search(cmd[1], SESSION)
+            client = await get_voice_client(message.guild, message.author)
+            stream = NicoStream(
+                contentid,
+                SESSION,
+                await nico_get_thumbinfo(
+                    SESSION,
+                    contentid
+                ),
+                message.author
+            )
+            await client.play(stream, message.channel)
+            yield f"Successfully added [{stream.title}]({stream.url})."
     elif cmd[0] == "stop":
         client = await get_voice_client(message.guild, message.author)
         client.nuke_queue()
@@ -498,7 +608,7 @@ async def main(message, **kwargs):
         client = await get_voice_client(message.guild, message.author)
         queue = client.list_queue()
         txtqueue = [
-            f"[{music.author} - {music.title}]({music.url})"
+            f"[{music.title}]({music.url})"
             for music in queue
         ]
         splitqueue = [txtqueue[n:n + 10] for n in range(0, len(txtqueue), 10)]
@@ -509,7 +619,7 @@ async def main(message, **kwargs):
                 page = int(cmd[1]) - 1
             except ValueError:
                 raise ValueError(f"{cmd[1]} is not a number.")
-        if page > len(splitqueue):
+        if page >= len(splitqueue):
             raise ValueError(f"{page} is bigger than the amount of existing page.")
 
         yield "\n\n".join([
@@ -520,13 +630,21 @@ async def main(message, **kwargs):
         client = await get_voice_client(message.guild, message.author)
         client.shuffle_queue()
         yield "Shuffled the queue."
+    elif cmd[0] == "repeat":
+        client = await get_voice_client(message.guild, message.author)
+        repeat = client.set_repeat()
+        if repeat:
+            yield "Enabled repeat."
+        else:
+            yield "Disabled repeat."
     elif cmd[0] == "leave":
         client = await get_voice_client(message.guild, message.author)
         await client.client.disconnect()
-        del voice_clients[str(guild.id)]
+        del voice_clients[str(message.guild.id)]
         yield "Removed the queue and disconnected from the voice channel."
     else:
         yield "Usage: nico [play/stop/pause/resume/skip/queue/shuffle/leave]"
+    return
 
 if __name__ == "modules.nico":
     SESSION = nico_get_session()
