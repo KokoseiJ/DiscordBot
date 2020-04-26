@@ -591,6 +591,7 @@ async def main(message, **kwargs):
     elif cmd[0] == "stop":
         client = await get_voice_client(message.guild, message.author)
         client.nuke_queue()
+        client.repeat = False
         client.client.stop()
         yield "Stopped the playback and removed the queue."
     elif cmd[0] == "pause":
