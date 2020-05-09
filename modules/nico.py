@@ -102,8 +102,9 @@ class OggParser:
     def packet_iter(self):
         while True:
             for page in self._page_iter():
-                if not page:
-                    return b""
+                if page is None:
+                    yield b""
+                    return
                 for packet in page:
                     yield packet
 
@@ -125,7 +126,6 @@ class OggParser:
         page_seg = header_struct.unpack(
             self.pipe.read(header_struct.size)
         )
-
         seg_table = self.pipe.read(page_seg)
 
         packet_size = 0
@@ -277,6 +277,7 @@ class NicoStream(BotMusicStream):
                 self.ffmpeg_process.stdin.write(chunk)
                 if self.download_done.is_set():
                     return
+        self.ffmpeg_process.stdin.close()
         self.download_done.set()
         return
 
