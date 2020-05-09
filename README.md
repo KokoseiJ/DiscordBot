@@ -26,6 +26,9 @@ If you want to fork this bot and make/host your own bot, You might want to check
 3. Easily configurable
  - Color of embed, default prefix to use when there's no custom prefix set for the server and more are changeable in `config.ini`! Change some values in there, and you are done.
 
+## I want to use some of the modules in my bot
+Yes, you can do it! in fact, All you have to do is getting a module file/`bot_func.py` and import it to your bot. then you can call `module.main(message, STATICS)` - returned value will be async generator. the type of every returned values can be either string, discord.Embed, discord.File, or None if message has to be deleted. value of STATICS might/might not be used. I am planning to write a documentation about this, but it's not here yet - so please read the code and check if it uses any.
+
 ## Contribution
 Source code of Kyoko is open-sourced, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with mian `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
 
@@ -34,7 +37,7 @@ Source code of Kyoko is open-sourced, and I appreciate any form of contribution.
 ### Code
  * [x] add perm command which contains help, set(which contains user, module subcommands) subcommands
  * [x] add set_prefix command
- * [ ] Migrate datas to MariaDB.
+ * [ ] Migrate datas to MariaDB
  * [ ] print "Running {cmd}..." before running the command.
  * [ ] remove import_module() function and do the same thing with `__init__.py`.
  * [ ] Add an exception that will be raised by modules when It's expected
@@ -47,9 +50,8 @@ Source code of Kyoko is open-sourced, and I appreciate any form of contribution.
  
  * [x] translate 음악 module to english.
  * [x] Add help module that will display the list of commands.
- * [x] rewrite music module, as well as merging music module and nico module - no more server_client class.
  * [ ] add docstring and comments to every modules
- * [ ] Add filter module which will allow users to add their own filters.
+ * [ ] Add filter module which will allow users to add their own filters
 
 ### Documentation
  * [x] Provide a documentation about the bot itself
