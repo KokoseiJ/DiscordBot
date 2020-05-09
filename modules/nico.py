@@ -112,7 +112,7 @@ class OggParser:
         magicheader = self.pipe.read(4)
         if magicheader == b"OggS":
             yield self._packet_iter()
-        elif not magicheader:
+        elif magicheader == b"":
             yield None
             return
         else:
@@ -168,6 +168,7 @@ class BotMusicStream(discord.AudioSource):
         self.download_in_progress = threading.Event()
         self.download_done = threading.Event()
 
+        self.ffmpeg_process = None
         self.ffmpeg_args = [
             "ffmpeg", "-vn",
             "-i", "-",
@@ -192,7 +193,7 @@ class BotMusicStream(discord.AudioSource):
         raise NotImplementedError()
 
     def cleanup(self):
-        return
+        raise NotImplementedError()
 
 class NicoStream(BotMusicStream):
     def __init__(self, contentid, session, thumbinfo, adder):
@@ -276,8 +277,9 @@ class NicoStream(BotMusicStream):
             for chunk in ts.iter_content(8192):
                 self.ffmpeg_process.stdin.write(chunk)
                 if self.download_done.is_set():
-                    return
+                    break
         self.ffmpeg_process.stdin.close()
+        self.ffmpeg_process.kill()
         self.download_done.set()
         return
 
@@ -299,8 +301,9 @@ class NicoStream(BotMusicStream):
         for chunk in video.iter_content(8192):
             self.ffmpeg_process.stdin.write(chunk)
             if self.download_done.is_set():
-                return
+                break
         self.ffmpeg_process.stdin.close()
+        self.ffmpeg_process.kill()
         self.download_done.set()
         return
 
@@ -324,6 +327,9 @@ class NicoStream(BotMusicStream):
 
     def is_opus(self):
         return True
+
+    def cleanup(self):
+        self.download_done.set()
 
 class VoiceQueue:
     def __init__(self, client):
