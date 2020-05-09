@@ -23,9 +23,8 @@ async def perm_cmd(cmd, message, sv_perm, modules, commands):
     """
     Get user list/command list from the message, change its permission.
     """
-    if len(cmd) < 3:
-        pass
-    elif cmd[1] == "set":
+    if cmd[1] == "set":
+        
         perm = await Bot.get_user_perm(message.author, message.guild, sv_perm)
         if not perm <= 3:
             raise PermissionError("You don't have permission to use this command.")
