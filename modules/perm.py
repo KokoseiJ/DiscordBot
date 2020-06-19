@@ -69,7 +69,7 @@ async def main(message, **kwargs):
 					else:
 						cursor = await db.execute(
 							'''SELECT perm_level FROM user_perm
-						 	  WHERE user_id=? AND server_id=?''',
+						 	   WHERE user_id=? AND server_id=?''',
 							(user.id, message.guild.id)
 						)
 						result = await cursor.fetchone()
@@ -87,11 +87,12 @@ async def main(message, **kwargs):
 			rtntext = ""
 			async with aiosqlite.connect(DBPATH) as db:
 				for cmd in cmdlist:
-					await db.execute('''SELECT perm_level FROM cmd_perm
-										WHERE cmd=? AND server_id=?''',
-										(cmd, message.guild.id)
+					cursor = await db.execute(
+						'''SELECT perm_level FROM cmd_perm
+						   WHERE cmd=? AND server_id=?''',
+						(cmd, message.guild.id)
 					)
-					result = await db.fetchone()
+					result = await cursor.fetchone()
 					if result is None:
 						perm = modules[cmd].PERMISSION
 					else:
