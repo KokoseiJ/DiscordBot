@@ -5,8 +5,9 @@ import logging
 import importlib
 import traceback
 import configparser
-from bot_func import Bot
-from perm import perm_cmd
+from modules.util import Bot
+
+MODULE_BLACKLIST = ["util.py"]
 
 def import_module():
     """
@@ -16,7 +17,7 @@ def import_module():
     modules, commands, filters variables. I know that there's ways to implement
     this without global keyword, but not now.
     also, I suggest you to not use reload command often as it messes up badly
-    with some modules that stores informations on their own like 음악, it
+    with some modules that stores informations on their own like music, it
     literally fucks up and it requires you to manually kick the bot and rejoin.
     """
     # TODO: Implement `on_reload` methods to all the modules, and execute it
@@ -24,22 +25,23 @@ def import_module():
     global modules, commands, filters
     folderpath = os.path.join(PATH, "modules")
     logging.info(f"Loading {folderpath}...")
-    for modulefile in os.listdir(folderpath):
-        if not modulefile.startswith("__"):
-            module_name = modulefile.split(".")[0]
-            # if it exists, reload it. else, import it.
-            try:
-                importlib.reload(modules[module_name])
-                log = f"Succesfully Reloaded {module_name}."
-            except KeyError:
-                module = importlib.import_module(f"modules.{module_name}")
-                modules[module_name] = module
-                if module.PERMISSION == 6:
-                    filters.append(module_name)
-                else:
-                    commands.append(module_name)
-                log = f"Succesfully Loaded {module_name}."
-            logging.info(log)
+    module_list = [
+        name.split(".")[0]
+        for name in os.listdir(folderpath)
+        if name.endswith(".py")
+        and not name.startswith("_")
+        and not name in MODULE_BLACKLIST
+    ]
+    for name in module_list:
+        if name in list(modules):
+            importlib.reload(modules[name])
+        else:
+            module = importlib.import_module(f"modules.{name}")
+            modules[name] = module
+            if module.PERMISSION == 6:
+                filters.append(name)
+            else:
+                commands.append(name)
 
 # Get path based on the script's location.
 PATH = os.path.dirname(os.path.abspath(__file__))
@@ -113,6 +115,13 @@ modules = {}
 commands = []
 filters = []
 import_module()
+
+# Run prepare()
+for module in [modules[name] for name in commands]:
+    try:
+        module.prepare()
+    except AttributeError:
+        continue
 
 client = discord.Client()
 

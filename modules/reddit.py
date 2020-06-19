@@ -6,8 +6,7 @@ from bs4 import BeautifulSoup as bs
 
 PATH = os.path.dirname(os.path.abspath(__file__))
 
-sys.path.insert(0, os.path.dirname(PATH))
-from bot_func import Bot
+from modules.util import Bot
 
 PERMISSION = 5
 
