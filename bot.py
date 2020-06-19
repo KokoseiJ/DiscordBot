@@ -223,17 +223,6 @@ async def on_message(message):
                 )
                 await Bot.edit_msg(msg, embed)
             
-            elif cmd == "perm":
-                rtnvalue, new_sv_perm = await perm_cmd(
-                    fullcmd.split(), message, sv_perm, modules, commands)
-                sv_perm = new_sv_perm
-                embed = await Bot.get_embed(
-                    "permission",
-                    rtnvalue,
-                    message.author
-                )
-                await Bot.send_msg(message.channel, embed)
-            
             elif cmd in commands:
                 # Get the module's permission, If user's permission is higher
                 # than the command, execute it

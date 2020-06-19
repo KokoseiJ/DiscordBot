@@ -5,3 +5,4 @@ discord
 aiofiles
 youtube_dl
 requests_async
+aiosqlite
