@@ -33,28 +33,4 @@ Yes, you can do it! in fact, All you have to do is getting a module file/`bot_fu
 Source code of Kyoko is open-sourced, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with mian `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
 
 ## TODO
-
-### Code
- * [x] add perm command which contains help, set(which contains user, module subcommands) subcommands
- * [x] add set_prefix command
- * [ ] Migrate datas to MariaDB
- * [ ] print "Running {cmd}..." before running the command.
- * [ ] remove import_module() function and do the same thing with `__init__.py`.
- * [ ] Add an exception that will be raised by modules when It's expected
- * [ ] DEBUGGING
- * [ ] Remove unnecessary async/await keyword
- * [ ] change type detection to use `isinstance()`
- * [ ] on_ready handler:  Do something in here, like changing the activity for every single second
- 
-### Modules
- 
- * [x] translate 음악 module to english.
- * [x] Add help module that will display the list of commands.
- * [ ] add docstring and comments to every modules
- * [ ] Add filter module which will allow users to add their own filters
-
-### Documentation
- * [x] Provide a documentation about the bot itself
- * [ ] Move TODO section to github TODO list
- * [ ] Provide a documentation about each modules
- * [ ] Provide a documentation about the format of the module
+Please check [issue #2](https://github.com/KokoseiJ/DiscordBot/issues/2).
