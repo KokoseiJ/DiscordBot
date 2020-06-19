@@ -24,6 +24,8 @@ You can change the permisison of the command that has the same/lower permission,
 
 DBPATH = os.path.join(Bot.path, "bot_database.db")
 
+## TODO: Move db related things to util.py
+
 def prepare():
 	with sqlite3.connect(DBPATH) as db:
 		db.execute('''CREATE TABLE IF NOT EXISTS user_perm
