@@ -14,7 +14,7 @@ class CatWorker:
         
     async def __get_cat(self):
         async with aiohttp.ClientSession() as session:
-            # 기존api(https://aws.random.cat/meow) 사망으로 자체 api로 변경
+            # 기존api(https://aws.random.cat/meow) 503에러로 인하여 자체 api로 변경
             async with session.get("https://api.chick.ga/api") as resp:
                 return await resp.json()
 
