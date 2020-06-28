@@ -14,7 +14,8 @@ class CatWorker:
         
     async def __get_cat(self):
         async with aiohttp.ClientSession() as session:
-            async with session.get("https://aws.random.cat/meow") as resp:
+            # 기존api(https://aws.random.cat/meow) 사망으로 자체 api로 변경
+            async with session.get("https://api.chick.ga/api") as resp:
                 return await resp.json()
 
     async def send_cat(self, filtered, color=0xFCFCFC):
