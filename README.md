@@ -27,10 +27,10 @@ If you want to fork this bot and make/host your own bot, You might want to check
  - Color of embed, default prefix to use when there's no custom prefix set for the server and more are changeable in `config.ini`! Change some values in there, and you are done.
 
 ## I want to use some of the modules in my bot
-Yes, you can do it! in fact, All you have to do is getting a module file/`bot_func.py` and import it to your bot. then you can call `module.main(message, STATICS)` - returned value will be async generator. the type of every returned values can be either string, discord.Embed, discord.File, or None if message has to be deleted. value of STATICS might/might not be used. I am planning to write a documentation about this, but it's not here yet - so please read the code and check if it uses any.
+Yes, you can do it! in fact, All you have to do is getting a module file/`bot_func.py` and import it to your bot. then you can call `module.main(message)` - returned value will be async generator. the type of returned value can be either string, discord.Embed, discord.File, or None if message needs to be deleted. I am planning to write a documentation about this, but it's not here yet - so please read the code and check if it uses any of additional parameters.
 
 ## Contribution
-Source code of Kyoko is open-sourced, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with main `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
+Source code of Kyoko is distributed under GNU Public License version 3, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with main `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
 
 ## TODO
 Please check [issue #2](https://github.com/KokoseiJ/DiscordBot/issues/2).
