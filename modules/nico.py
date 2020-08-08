@@ -23,7 +23,7 @@ from modules.util import Bot
 
 logger = logging.getLogger()
 
-PERMISSION = 1
+PERMISSION = 5
 HELP = """\
 Plays the music from `nicovideo.jp`.
 Usage: nico [play/stop/pause/resume/skip/queue/shuffle/repeat/leave]
