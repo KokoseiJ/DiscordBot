@@ -15,7 +15,7 @@ Here's some special features:
 2. Changeable prefix
  - If another bot in your server is already using `!` prefix, don't worry - our kind kyoko can change its prefix for you. even if you somehow mess up with prefix or forgot what the prefix was, You can use `?prefix` or `?reset_prefix` to solve the situation.
 3. Multiple functions
-  - Kyoko is very smart, Just like in class trial. It can search google for you, Find some images, or even stream musics in decent quality from nicovideo with playlist support! (Currently Youtube support is removed as youtube changed its way to store video URL, I will fix it again as soon as possible)
+  - Kyoko is very smart, Just like in class trial. It can search google for you, Find some images, or even stream musics in decent quality from nicovideo and youtube with playlist support!
 
 ## Programmer/Host side features
 If you want to fork this bot and make/host your own bot, You might want to check this part. This bot is not just user-friendly, but also programmer/host-friendly! Kyoko is written in python and It takes advantages of being written in interpreter language.
@@ -27,34 +27,10 @@ If you want to fork this bot and make/host your own bot, You might want to check
  - Color of embed, default prefix to use when there's no custom prefix set for the server and more are changeable in `config.ini`! Change some values in there, and you are done.
 
 ## I want to use some of the modules in my bot
-Yes, you can do it! in fact, All you have to do is getting a module file/`bot_func.py` and import it to your bot. then you can call `module.main(message, STATICS)` - returned value will be async generator. the type of every returned values can be either string, discord.Embed, discord.File, or None if message has to be deleted. value of STATICS might/might not be used. I am planning to write a documentation about this, but it's not here yet - so please read the code and check if it uses any.
+Yes, you can do it! in fact, All you have to do is getting a module file/`bot_func.py` and import it to your bot. then you can call `module.main(message)` - returned value will be async generator. the type of returned value can be either string, discord.Embed, discord.File, or None if message needs to be deleted. I am planning to write a documentation about this, but it's not here yet - so please read the code and check if it uses any of additional parameters.
 
 ## Contribution
-Source code of Kyoko is open-sourced, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with mian `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
+Source code of Kyoko is distributed under GNU Public License version 3, and I appreciate any form of contribution. As the bot is loading a command as a module from each files, All you have to do is write a code in separate file(without messing with main `bot.py`) and gently send a PR to me. I will review it and merge the PR ASAP.
 
 ## TODO
-
-### Code
- * [x] add perm command which contains help, set(which contains user, module subcommands) subcommands
- * [x] add set_prefix command
- * [ ] Migrate datas to MariaDB
- * [ ] print "Running {cmd}..." before running the command.
- * [ ] remove import_module() function and do the same thing with `__init__.py`.
- * [ ] Add an exception that will be raised by modules when It's expected
- * [ ] DEBUGGING
- * [ ] Remove unnecessary async/await keyword
- * [ ] change type detection to use `isinstance()`
- * [ ] on_ready handler:  Do something in here, like changing the activity for every single second
- 
-### Modules
- 
- * [x] translate 음악 module to english.
- * [x] Add help module that will display the list of commands.
- * [ ] add docstring and comments to every modules
- * [ ] Add filter module which will allow users to add their own filters
-
-### Documentation
- * [x] Provide a documentation about the bot itself
- * [ ] Move TODO section to github TODO list
- * [ ] Provide a documentation about each modules
- * [ ] Provide a documentation about the format of the module
+Please check [issue #2](https://github.com/KokoseiJ/DiscordBot/issues/2).
