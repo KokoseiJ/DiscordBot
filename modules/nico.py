@@ -428,6 +428,8 @@ async def nico_get_mylist(url, session):
         url
     )
     soup = bs(r.text, "html.parser")
+    print(soup.status_code)
+    print(r.text)
     name = soup.find("div", id = "PAGEBODY")\
         .find_all("script")[-4]\
         .string\
@@ -464,6 +466,22 @@ async def nico_get_mylist(url, session):
             for vid in jsonlist
             ])
         prev_json = jsonlist
+    return name, vidlist
+
+async def nico_get_mylist(url, session):
+    import functools
+    loop = asyncio.get_event_loop()
+    name = None
+    func = functools.partial(session.get, headers={"x-frontend-id":"6"})
+    playlist_id = url.rsplit("/", 1)[-1].split("?", 1)[0]
+    r = await loop.run_in_executor(
+        None,
+        func,
+        f"https://nvapi.nicovideo.jp/v2/mylists/{playlist_id}?pageSize=100&page=1"
+    )
+    data = r.json()
+    name = data['data']['mylist']['name']
+    vidlist = [(vid['watchId'], {"title": vid['video']['title'], "thumbnail": vid['video']['thumbnail']['url']}) for vid in data['data']['mylist']['items']]
     return name, vidlist
 
 async def nico_search(q, session):

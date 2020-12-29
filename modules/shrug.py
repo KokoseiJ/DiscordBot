@@ -1,10 +1,10 @@
 PERMISSION = 6
 
-HELP = '`¯\\_(ツ)_/¯`'
+HELP = ':shrug:'
 
 async def main(message):
     if message.author.bot:
         return
-    if "shrug" in message.content:
-        return "¯\\_(ツ)_/¯"
+    if "shrug" in message.content or "¯\_(ツ)_/¯" in message.content:
+        return "¯\_(ツ)_/¯"
 
