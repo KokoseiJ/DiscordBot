@@ -8,6 +8,7 @@ Pipfile*
 __pycache__/*
 modules/__pycache__/*
 modules/__music__/*
+venv
 # Things for my cwd
 modules_old
 재작성 가이드
